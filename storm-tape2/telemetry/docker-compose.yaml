@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2025 Istituto Nazionale di Fisica Nucleare
+#
+# SPDX-License-Identifier: EUPL-1.2
+
+services:
+  nginx:
+    build:
+      context: nginx
+    image: nginx-otel
+    container_name: nginx-otel
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/templates:/etc/nginx/templates
+      - ./nginx/auth.js:/etc/nginx/njs/auth.js
+    environment:
+      OTEL_SERVICE_NAME:
+      OTEL_EXPORTER_ENDPOINT:
+      SERVER_NAME:
+    ports:
+      - 8080:80
+
+  opa:
+    image: openpolicyagent/opa:latest-debug
+    container_name: opa-otel
+    volumes:
+      - ./opa:/etc/opa
+
+    entrypoint: opa run --server /etc/opa --log-level debug -c /etc/opa/config.yaml --addr 0.0.0.0:8181 --watch
+    init: true
+
+  storm-tape:
+    image: baltig.infn.it:4567/cnafsd/storm-tape:main
+    container_name: storm-tape
+    hostname: ${SERVER_NAME}
+    environment:
+      SERVER_NAME:
+    command: storm-tape
+    volumes:
+      - ./storm-tape.conf:/storm-tape/storm-tape.conf

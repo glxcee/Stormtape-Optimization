@@ -1,0 +1,44 @@
+*** Begin Patch: tape_service_par.patch
+*** Update File: src/tape_service.cpp
+@@
+-  StorageAreaResolver resolve{m_config.storage_areas};
+-  for (auto& file : files) {
+-    file.physical_path = resolve(file.logical_path);
+-    std::error_code ec;
+-    auto status = fs::status(file.physical_path, ec);
+-    if (ec || !fs::is_regular_file(status)) {
+-      file.state       = File::State::failed;
+-      file.started_at  = std::time(nullptr);
+-      file.finished_at = file.started_at;
+-    }
+-  }
++  // Parallelize resolution and quick filesystem checks: each element is independent.
++  // We instantiate a resolver locally inside the lambda to be safe for concurrent use.
++  // github test
++  #include <execution>
++  std::for_each(std::execution::par, files.begin(), files.end(),
++                [this](File &file) {
++                  StorageAreaResolver resolver{m_config.storage_areas};
++                  file.physical_path = resolver(file.logical_path);
++                  std::error_code ec;
++                  auto status = fs::status(file.physical_path, ec);
++                  if (ec || !fs::is_regular_file(status)) {
++                    file.state       = File::State::failed;
++                    file.started_at  = std::time(nullptr);
++                    file.finished_at = file.started_at;
++                  }
++                });
+@@
+-  std::transform( //
+-      paths.begin(), paths.end(), std::back_inserter(infos),
+-      [&](LogicalPath& logical_path) {
+-        using namespace std::string_literals;
+-
+-        auto const physical_path = resolve(logical_path);
++  // Transform paths -> infos in parallel. Resolver is created per invocation.
++  std::transform(std::execution::par, paths.begin(), paths.end(),
++                 std::back_inserter(infos),
++                 [&](LogicalPath& logical_path) {
++                   using namespace std::string_literals;
++                   StorageAreaResolver resolver{m_config.storage_areas};
++                   auto const physical_path = resolver(logical_path);

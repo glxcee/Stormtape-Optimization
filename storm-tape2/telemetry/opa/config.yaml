@@ -1,0 +1,5 @@
+default_decision: /server_rules/
+distributed_tracing:
+  type: grpc
+  address: otello.cloud.cnaf.infn.it:4317
+  service_name: storm-tape-opa
