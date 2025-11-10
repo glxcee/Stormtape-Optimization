@@ -31,7 +31,8 @@
 #include <optional>
 #include <span>
 #include <string>
-//#include <execution>
+
+#include <execution>
 
 namespace storm {
 
@@ -51,6 +52,7 @@ StageResponse TapeService::stage(StageRequest stage_request)
                           }),
               files.end());
 
+/*
   StorageAreaResolver resolve{m_config.storage_areas};
   for (auto& file : files) {
     file.physical_path = resolve(file.logical_path);
@@ -62,6 +64,19 @@ StageResponse TapeService::stage(StageRequest stage_request)
       file.finished_at = file.started_at;
     }
   }
+  */
+  std::for_each(std::execution::par, files.begin(), files.end(), [this](File &file) {
+    StorageAreaResolver resolver{m_config.storage_areas};
+    file.physical_path = resolver(file.logical_path);
+    std::error_code ec;
+    auto status = fs::status(file.physical_path, ec);
+    if (ec || !fs::is_regular_file(status)) {
+      file.state       = File::State::failed;
+      file.started_at  = std::time(nullptr);
+      file.finished_at = file.started_at;
+    }
+  });
+
   auto const id       = m_uuid_gen();
   auto const inserted = m_db.insert(id, stage_request);
   if (!inserted) {
@@ -268,13 +283,14 @@ ArchiveInfoResponse TapeService::archive_info(ArchiveInfoRequest info)
   infos.reserve(paths.size());
 
   StorageAreaResolver resolve{m_config.storage_areas};
-
+/*
   std::transform( //
       paths.begin(), paths.end(), std::back_inserter(infos),
       [&](LogicalPath& logical_path) {
         using namespace std::string_literals;
 
         auto const physical_path = resolve(logical_path);
+
         std::error_code ec;
         auto status = fs::status(physical_path, ec);
 
@@ -297,6 +313,43 @@ ArchiveInfoResponse TapeService::archive_info(ArchiveInfoRequest info)
         override_locality(locality, physical_path);
         return PathInfo{std::move(logical_path), locality};
       });
+        */
+std::mutex infos_mtx;
+
+std::for_each(std::execution::par, paths.begin(), paths.end(),
+              [&](LogicalPath& logical_path) {
+                  using namespace std::string_literals;
+                  StorageAreaResolver resolver{m_config.storage_areas};
+                  auto const physical_path = resolver(logical_path);
+
+                  PathInfo path_info;
+                  path_info.path = logical_path;
+
+                  std::error_code ec;
+                  auto status = fs::status(physical_path, ec);
+                  if (ec || !fs::exists(status)) {
+                      // file non trovato o errore d’accesso
+                      path_info.info = "File not found or inaccessible"s;
+                  } else {
+                      // ottieni la località dal file system esteso
+                      ExtendedFileStatus fs_info{m_storage, physical_path};
+
+                      auto locality = fs_info.locality();
+
+                      // cambia la locality lost in unavailable
+                      override_locality(locality, physical_path);
+
+                      path_info.info = locality;
+                  }
+
+                  // inserimento thread-safe nel vettore condiviso
+                  {
+                      std::lock_guard<std::mutex> lock(infos_mtx);
+                      infos.push_back(std::move(path_info));
+                  }
+              });
+
+        
 
   return ArchiveInfoResponse{infos};
 }

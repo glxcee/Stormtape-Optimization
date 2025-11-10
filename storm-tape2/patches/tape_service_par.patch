@@ -1,5 +1,5 @@
 *** Begin Patch: tape_service_par.patch
-*** Update File: src/tape_service.cpp
+*** Update File: ../src/tape_service.cpp
 @@
 -  StorageAreaResolver resolve{m_config.storage_areas};
 -  for (auto& file : files) {
@@ -14,7 +14,6 @@
 -  }
 +  // Parallelize resolution and quick filesystem checks: each element is independent.
 +  // We instantiate a resolver locally inside the lambda to be safe for concurrent use.
-+  // github test
 +  #include <execution>
 +  std::for_each(std::execution::par, files.begin(), files.end(),
 +                [this](File &file) {
@@ -35,10 +34,59 @@
 -        using namespace std::string_literals;
 -
 -        auto const physical_path = resolve(logical_path);
-+  // Transform paths -> infos in parallel. Resolver is created per invocation.
-+  std::transform(std::execution::par, paths.begin(), paths.end(),
-+                 std::back_inserter(infos),
-+                 [&](LogicalPath& logical_path) {
-+                   using namespace std::string_literals;
-+                   StorageAreaResolver resolver{m_config.storage_areas};
-+                   auto const physical_path = resolver(logical_path);
+-   std::error_code ec;
+-        auto status = fs::status(physical_path, ec);
+-
+-        // if the file doesn't exist, fs::status sets ec, so check first for
+-        // existence
+-        if (!fs::exists(status)) {
+-          return PathInfo{std::move(logical_path),
+-                          "No such file or directory"s};
+-        }
+-        if (ec != std::error_code{}) {
+-          return PathInfo{std::move(logical_path), Locality::unavailable};
+-        }
+-        if (fs::is_directory(status)) {
+-          return PathInfo{std::move(logical_path), "Is a directory"s};
+-        }
+-        if (!fs::is_regular_file(status)) {
+-          return PathInfo{std::move(logical_path), "Not a regular file"s};
+-        }
+-        auto locality = ExtendedFileStatus{m_storage, physical_path}.locality();
+-        override_locality(locality, physical_path);
+-        return PathInfo{std::move(logical_path), locality};
+-      });
++   std::mutex infos_mtx;
++
++   std::for_each(std::execution::par, paths.begin(), paths.end(),
++              [&](LogicalPath& logical_path) {
++                  using namespace std::string_literals;
++                  StorageAreaResolver resolver{m_config.storage_areas};
++                  auto const physical_path = resolver(logical_path);
++
++                  PathInfo path_info;
++                  path_info.path = logical_path;
++
++                  std::error_code ec;
++                  auto status = fs::status(physical_path, ec);
++                  if (ec || !fs::exists(status)) {
++                      // file non trovato o errore d’accesso
++                      path_info.info = "File not found or inaccessible"s;
++                  } else {
++                      // ottieni la località dal file system esteso
++                      ExtendedFileStatus fs_info{m_storage, physical_path};
++
++                      auto locality = fs_info.locality();
++
++                      // cambia la locality lost in unavailable
++                      override_locality(locality, physical_path);
++
++                      path_info.info = locality;
++                  }
++
++                 // inserimento thread-safe nel vettore condiviso
++                  {
++                      std::lock_guard<std::mutex> lock(infos_mtx);
++                      infos.push_back(std::move(path_info));
++                  }
++              });
