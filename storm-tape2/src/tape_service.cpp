@@ -43,7 +43,7 @@ StageResponse TapeService::stage(StageRequest stage_request)
   auto& files = stage_request.files;
   // de-duplication is needed because the logical path is a primary key of the
   // db
-  std::sort(files.begin(), files.end(), [](File const& a, File const& b) {
+  std::sort(std::execution::par, files.begin(), files.end(), [](File const& a, File const& b) {
     return a.logical_path < b.logical_path;
   });
   files.erase(std::unique(files.begin(), files.end(),
@@ -178,7 +178,7 @@ StatusResponse TapeService::status(StageId const& id)
       }
     }
 
-    std::sort(stage.files.begin(), stage.files.end(),
+    std::sort(std::execution::par, stage.files.begin(), stage.files.end(),
               [](auto const& f1, auto const& f2) {
                 return to_underlying(f1.state) < to_underlying(f2.state);
               });
@@ -283,7 +283,7 @@ ArchiveInfoResponse TapeService::archive_info(ArchiveInfoRequest info)
   infos.reserve(paths.size());
 
   StorageAreaResolver resolve{m_config.storage_areas};
-/*
+
   std::transform( //
       paths.begin(), paths.end(), std::back_inserter(infos),
       [&](LogicalPath& logical_path) {
@@ -313,8 +313,10 @@ ArchiveInfoResponse TapeService::archive_info(ArchiveInfoRequest info)
         override_locality(locality, physical_path);
         return PathInfo{std::move(logical_path), locality};
       });
-        */
-std::mutex infos_mtx;
+        
+       /* CAMBIAMENTO NON IMPLEMENTATO, PEGGIORAVA LE PRESTAZIONI
+std::vector<PathInfo> local_infos;
+local_infos.reserve(paths.size());
 
 std::for_each(std::execution::par, paths.begin(), paths.end(),
               [&](LogicalPath& logical_path) {
@@ -343,13 +345,11 @@ std::for_each(std::execution::par, paths.begin(), paths.end(),
                   }
 
                   // inserimento thread-safe nel vettore condiviso
-                  {
-                      std::lock_guard<std::mutex> lock(infos_mtx);
-                      infos.push_back(std::move(path_info));
-                  }
+                  local_infos.push_back(std::move(path_info));
               });
-
-        
+            
+  infos.insert(infos.end(), local_infos.begin(), local_infos.end());
+        */
 
   return ArchiveInfoResponse{infos};
 }
@@ -534,7 +534,7 @@ PhysicalPaths get_paths_in_progress(TapeService& ts, StageId const& id)
 void remove_duplicates(PhysicalPaths& paths)
 {
   TRACE_FUNCTION();
-  std::sort(paths.begin(), paths.end());
+  std::sort(std::execution::par, paths.begin(), paths.end());
   auto last = std::unique(paths.begin(), paths.end());
   paths.erase(last, paths.end());
 }

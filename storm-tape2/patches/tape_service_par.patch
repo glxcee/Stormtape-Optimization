@@ -28,6 +28,15 @@
 +                  }
 +                });
 @@
+- std::sort(files.begin(), files.end(), [](File const& a, File const& b) {
++ std::sort(std::execution::par, files.begin(), files.end(), [](File const& a, File const& b) {
+@@
+- std::sort(stage.files.begin(), stage.files.end(),
++ std::sort(std::execution::par, stage.files.begin(), stage.files.end(),
+@@
+- std::sort(paths.begin(), paths.end());
++ std::sort(std::execution::par, paths.begin(), paths.end());
+@@
 -  std::transform( //
 -      paths.begin(), paths.end(), std::back_inserter(infos),
 -      [&](LogicalPath& logical_path) {
