@@ -26,6 +26,8 @@
 #include <string>
 #include <system_error>
 
+#include <execution>
+
 namespace algo = boost::algorithm;
 
 namespace storm {
@@ -217,7 +219,8 @@ static StorageAreas load_storage_areas(YAML::Node const& sas)
   }
 
   // keep storage areas sorted by name
-  std::sort(result.begin(),
+  std::sort(std::execution::par,
+    result.begin(),
             result.end(), //
             [](StorageArea const& l, StorageArea const& r) {
               return algo::ilexicographical_compare(l.name, r.name);
@@ -243,7 +246,7 @@ static StorageAreas load_storage_areas(YAML::Node const& sas)
                           [&](auto& ap) { return std::pair{ap, &sa}; });
           return partial;
         });
-    std::sort(aps.begin(), aps.end(),
+    std::sort(std::execution::par, aps.begin(), aps.end(),
               [](auto const& a, auto const& b) { return a.first < b.first; });
     return aps;
   }();

@@ -11,7 +11,7 @@ La funzione si occupa di restituire le location corrispondenti ai path richiesti
 
 i StorageAreaResolver vengono istanziati dentro al loop in modo che ogni thread ha il suo oggetto e non vanno a referenziare lo stesso
 
-parallelizzati le operazioni di sorting:
+parallelizzati le operazioni di sorting non I/O bound:
 std::sort(std::execution::par, files.begin(), files.end(), [](File const& a, File const& b) {
     return a.logical_path < b.logical_path;
   });

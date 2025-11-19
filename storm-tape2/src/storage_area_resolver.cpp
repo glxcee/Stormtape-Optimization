@@ -10,6 +10,8 @@
 #include <numeric>
 #include <optional>
 
+#include <execution>
+
 namespace storm {
 
 namespace {
@@ -57,6 +59,7 @@ PhysicalPath StorageAreaResolver::operator()(LogicalPath const& path) const
   // find the access point that is the longest prefix of the path, with the
   // corresponding SA
   auto best_match = std::transform_reduce(
+    std::execution::par,
       m_sas.begin(), m_sas.end(), BestMatchOpt{},
       [](BestMatchOpt const& bm1, BestMatchOpt const& bm2) {
         return std::max(bm1, bm2);
