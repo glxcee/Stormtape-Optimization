@@ -28,9 +28,14 @@ from threading import Thread
 # === CONFIGURAZIONE ===
 HOST = "http://localhost:8080"
 LOCUSTFILE = "client.py"
-USERS_LIST = [10, 20, 30]
-SPAWN_RATE = 2
-DURATION = "10s"
+
+USERS_LIST = [10, 50, 100, 200, 400]
+SPAWN_RATE = 10
+DURATION = "1m"
+
+USERS_LIST1 = [10, 20, 30]
+SPAWN_RATE1 = 2
+DURATION1 = "10s"
 
 TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M")
 OUTDIR = f"results/{TIMESTAMP}"
