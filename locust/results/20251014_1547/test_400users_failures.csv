@@ -1,2 +1,0 @@
-Method,Name,Error,Occurrences
-POST,stage,CatchResponseError('Stage failed with status 0'),1

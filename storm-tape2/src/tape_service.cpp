@@ -31,6 +31,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include "io_utils.hpp"
 //#include <execution>
 
 namespace storm {
@@ -120,8 +121,26 @@ StatusResponse TapeService::status(StageId const& id)
       stage_updated      = true;
     }
   } else {
+    /*
     for (auto& files = stage.files; auto& file : files) {
       ExtendedFileStatus file_status{m_storage, file.physical_path};
+      */
+     auto &files = stage.files;
+    std::mutex up_mtx;
+
+    auto worker = [&](File &file) {
+      ExtendedFileStatus fs_info{m_storage, file.physical_path};
+      return std::pair<File*, ExtendedFileStatus>(std::addressof(file),
+                                                 std::move(fs_info));
+    };
+
+    auto results = storm::io_utils::parallel_map(
+        files.begin(), files.end(), worker,
+        std::max(4u, std::thread::hardware_concurrency() / 2));
+
+    for (auto &pr : results) {
+        File &file = *pr.first;
+        ExtendedFileStatus &file_status = pr.second;
 
       switch (file.state) {
       case File::State::started: {
@@ -269,6 +288,7 @@ ArchiveInfoResponse TapeService::archive_info(ArchiveInfoRequest info)
 
   StorageAreaResolver resolve{m_config.storage_areas};
 
+  /*
   std::transform( //
       paths.begin(), paths.end(), std::back_inserter(infos),
       [&](LogicalPath& logical_path) {
@@ -297,6 +317,47 @@ ArchiveInfoResponse TapeService::archive_info(ArchiveInfoRequest info)
         override_locality(locality, physical_path);
         return PathInfo{std::move(logical_path), locality};
       });
+  */
+
+  // Use a bounded parallel map to evaluate filesystem queries and build PathInfo.
+  // The lambda returns PathInfo for each logical_path.
+  auto concurrency = std::max<std::size_t>(2u, std::thread::hardware_concurrency());
+  auto local_infos = storm::io_utils::parallel_map(
+      paths.begin(), paths.end(),
+      [this, &resolve](LogicalPath& logical_path) -> PathInfo {
+        using namespace std::string_literals;
+        auto const physical_path = resolve(logical_path);
+
+        std::error_code ec;
+        auto status = fs::status(physical_path, ec);
+
+        // if the file doesn't exist, fs::status sets ec, so check first for
+        // existence
+        if (!fs::exists(status)) {
+          return PathInfo{std::move(logical_path), "No such file or directory"s};
+        }
+        if (ec != std::error_code{}) {
+          return PathInfo{std::move(logical_path), Locality::unavailable};
+        }
+        if (fs::is_directory(status)) {
+          return PathInfo{std::move(logical_path), "Is a directory"s};
+        }
+       if (!fs::is_regular_file(status)) {
+          return PathInfo{std::move(logical_path), "Not a regular file"s};
+        }
+        auto locality = ExtendedFileStatus{m_storage, physical_path}.locality();
+        override_locality(locality, physical_path);
+        return PathInfo{std::move(logical_path), locality};
+      },
+      concurrency);
+
+  // Move all results into infos (order matches input order)
+  infos.insert(infos.end(),
+               std::make_move_iterator(local_infos.begin()),
+               std::make_move_iterator(local_infos.end()));
+
+
+
 
   return ArchiveInfoResponse{infos};
 }
@@ -317,9 +378,23 @@ static auto extend_paths_with_localities(PhysicalPaths&& paths,
   std::vector<PathLocality> path_localities;
   path_localities.reserve(paths.size());
 
+  /*
   for (auto&& path : paths) {
     auto const locality = ExtendedFileStatus{storage, path}.locality();
     path_localities.emplace_back(std::move(path), locality);
+  }
+    */
+     // Parallelize computing localities for a set of paths (I/O bound).
+   auto path_loc_results = storm::io_utils::parallel_map(
+      paths.begin(), paths.end(),
+    [&storage](PhysicalPath& path) -> PathLocality {
+      auto const locality = ExtendedFileStatus{storage, path}.locality();
+       return PathLocality{std::move(path), locality};
+     },
+      std::max<std::size_t>(2u, std::thread::hardware_concurrency()));
+
+  for (auto &pl : path_loc_results) {
+    path_localities.emplace_back(std::move(pl));
   }
 
   return path_localities;
@@ -371,8 +446,11 @@ TakeOverResponse TapeService::take_over(TakeOverRequest req)
 
   auto physical_paths = m_db.get_files(File::State::submitted, req.n_files);
 
+  
   auto path_locs =
       extend_paths_with_localities(std::move(physical_paths), m_storage);
+  
+ 
 
   auto [only_on_tape, not_only_on_tape] = select_only_on_tape(path_locs);
   auto [in_progress, need_recall]       = select_in_progress(only_on_tape);
@@ -414,6 +492,8 @@ TakeOverResponse TapeService::take_over(TakeOverRequest req)
     // later again to GEMSS. passing a file to GEMSS is mostly an idempotent
     // operation
     // clang-format off
+
+    /*
     std::for_each(
         physical_paths.begin(), physical_paths.end(), [&](auto& physical_path) {
           XAttrName const tsm_rect{"user.TSMRecT"};
@@ -425,6 +505,21 @@ TakeOverResponse TapeService::take_over(TakeOverRequest req)
                                             physical_path);
           }
         });
+      */
+
+    // parallelize xattr creation with bounded concurrency (I/O-bound)
+    storm::io_utils::parallel_for_each(
+       physical_paths.begin(), physical_paths.end(),
+        [](PhysicalPath& physical_path) {
+          XAttrName const tsm_rect{"user.TSMRecT"};
+          std::error_code ec;
+          create_xattr(physical_path, tsm_rect, ec);
+          if (ec != std::error_code{}) {
+            CROW_LOG_WARNING << fmt::format("Cannot create xattr {} for file {}",
+                                            tsm_rect.value(), physical_path);
+          }
+       },
+        std::max<std::size_t>(2u, std::thread::hardware_concurrency()));
     // clang-format on
   }
   m_db.update(physical_paths, File::State::started, now);
