@@ -2,6 +2,10 @@ from locust import HttpUser, task, between
 import uuid
 import json
 import time
+import random
+
+create_amount_max = 10  # numero massimo di file da richiedere in una singola operazione di stage
+check_amount_max = 5  # numero massimo di file da richiedere in una singola operazione di archiveinfo
 
 class StormTapeUser(HttpUser):
     """
@@ -12,6 +16,7 @@ class StormTapeUser(HttpUser):
     4. opzionalmente cancella o chiede archiveinfo.
     """
     wait_time = between(1, 3)  # tempo di attesa fra operazioni
+    files = [] # tiene traccia dei file richiesti
 
     def on_start(self):
         """
@@ -19,7 +24,7 @@ class StormTapeUser(HttpUser):
         """
         self.request_id = None
 
-    @task(3)
+    @task(3) # pesantezza maggiore -> + frequente
     def do_stage_and_poll(self):
         """
         Task principale:
@@ -27,11 +32,15 @@ class StormTapeUser(HttpUser):
         - poi effettua polling periodico GET /stage/{requestId}
         """
         # 1. Prepara payload per la richiesta di stage
+        new_files = []
+        for i in range(random.randrange(1,create_amount_max)):  # puoi variare il numero di file se vuoi
+            new_files.append({"path": f"/tmp/testfile-{uuid.uuid4()}.txt"})
+
         payload = {
-            "files": [
-                {"path": f"/tmp/testfile-{uuid.uuid4()}.txt"}
-            ]
+            "files": new_files
         }
+
+        self.files += new_files
 
         # 2. Invia la richiesta POST /api/v1/stage
         with self.client.post("/api/v1/stage", json=payload, catch_response=True, name="stage") as resp:
@@ -72,15 +81,22 @@ class StormTapeUser(HttpUser):
                         pass
                 # se status non 200 non facciamo nulla di speciale qui, continua polling
 
-    @task(1)
+    @task(2)
     def do_archive_info(self):
         """
         Task secondario: chiedi informazioni di archivio per un file (POST /api/v1/archiveinfo)
         """
+        #print(len(self.files))
+
+        checking_files = []
+        if len(self.files) == 0:
+            checking_files.append({"path": "/tmp/example2.txt"})
+        else:
+            for i in range(random.randrange(1,min(len(self.files),check_amount_max)+1)):
+                checking_files.append(self.files[random.randrange(0, len(self.files))])
+
         payload = {
-            "files": [
-                {"path": "/tmp/example.txt"}
-            ]
+            "files": checking_files
         }
         self.client.post("/api/v1/archiveinfo", json=payload, name="archiveinfo")
 
