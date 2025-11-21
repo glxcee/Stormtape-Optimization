@@ -493,7 +493,7 @@ TakeOverResponse TapeService::take_over(TakeOverRequest req)
     // operation
     // clang-format off
 
-    /*
+    /* 
     std::for_each(
         physical_paths.begin(), physical_paths.end(), [&](auto& physical_path) {
           XAttrName const tsm_rect{"user.TSMRecT"};
