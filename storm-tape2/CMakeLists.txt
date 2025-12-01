@@ -136,6 +136,10 @@ add_library(
   src/tracer_provider.cpp
   src/types.cpp
   src/uuid_generator.cpp
+    # DB parallelization layer
+  src/db/sqlite_pool.cpp
+  src/db/db_writer.cpp
+  src/db/db_access.cpp
 )
 
 target_link_libraries(
