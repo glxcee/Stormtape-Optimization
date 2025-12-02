@@ -79,30 +79,28 @@ int main(int argc, char* argv[])
     storm::LocalStorage storage{};
     std::vector<std::pair<storm::PhysicalPath, storm::File::State>> files_to_update;
 
-    parallel = false;
+    //parallel = false;
     std::cout << "Parallel mode: " << (parallel ? "enabled" : "disabled") << "\n";
 
     // --- BENCHMARK 1 ---
     auto [r1, t1] = benchmark([&] {
-      // Usiamo paths_for_test1 con move
       return storm::extend_paths_with_localities(std::move(paths), storage,
                                                  parallel);
     });
 
     // --- BENCHMARK 2 ---
     auto [r2, t2] = benchmark([&] {
-      // Passiamo il vettore di File corretto e le storage_areas
       storm::stage_path_resolver(files, config.storage_areas,
                                                  parallel);
     });
 
+    // --- BENCHMARK 3 ---
     auto [r3, t3] = benchmark([&] {
-      // Passiamo il vettore di File corretto e le storage_areas
       storm::status_loop(files, storage, std::time(nullptr), files_to_update, parallel);
     });
 
+    // --- BENCHMARK 4 ---
     auto [r4, t4] = benchmark([&] {
-      // Passiamo il vettore di File corretto e le storage_areas
       storm::archive_info_loop(logical_paths,config.storage_areas, storage, parallel);
     });
 
