@@ -1,0 +1,16 @@
+build*
+vcpkg
+.vscode/
+.zed/
+.idea/
+.codebook.toml
+codebook.toml
+CMakeUserPresets.json
+*.db
+*.sqlite
+storm-tape-*.tar.gz
+compile_commands.json
+storm-tape.conf
+certs/
+.env
+.cache
