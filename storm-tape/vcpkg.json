@@ -1,0 +1,27 @@
+{
+  "name": "storm-tape",
+  "dependencies": [
+    "boost-algorithm",
+    "boost-json",
+    "boost-program-options",
+    "boost-url",
+    "boost-uuid",
+    "crow",
+    "doctest",
+    "fmt",
+    {
+      "name": "opentelemetry-cpp",
+      "features": [
+        "otlp-http"
+      ]
+    },
+    {
+      "name": "soci",
+      "features": [
+        "sqlite3"
+      ]
+    },
+    "yaml-cpp",
+    "tbb"
+  ]
+}

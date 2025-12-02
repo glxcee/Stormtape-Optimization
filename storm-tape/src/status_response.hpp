@@ -1,0 +1,32 @@
+// SPDX-FileCopyrightText: 2025 Istituto Nazionale di Fisica Nucleare
+//
+// SPDX-License-Identifier: EUPL-1.2
+
+#ifndef STORM_STATUS_RESPONSE_HPP
+#define STORM_STATUS_RESPONSE_HPP
+
+#include "stage_request.hpp"
+
+namespace storm {
+
+class StatusResponse
+{
+ private:
+  StageId m_id{};
+  StageRequest m_stage{};
+
+ public:
+  StatusResponse() = default;
+  StatusResponse(StageId id, StageRequest stage)
+      : m_id(std::move(id))
+      , m_stage(std::move(stage))
+  {}
+
+  StageId const& id() const { return m_id; }
+  StageRequest const& stage() const { return m_stage; }
+  StageRequest& stage() { return m_stage; }
+};
+
+} // namespace storm
+
+#endif

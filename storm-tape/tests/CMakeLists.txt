@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2025 Istituto Nazionale di Fisica Nucleare
+#
+# SPDX-License-Identifier: EUPL-1.2
+
+find_package(doctest CONFIG REQUIRED)
+
+add_executable(all.t 
+  all.t.cpp 
+  configuration.t.cpp
+  errors.t.cpp
+  storage_area_resolver.t.cpp
+  io.t.cpp
+  stage_request.t.cpp
+  tape_service.t.cpp
+  fixture.t.cpp
+)
+
+target_include_directories(all.t PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(all.t PRIVATE libtaperestapi doctest::doctest)
+add_test(NAME all.t COMMAND all.t)
+
+add_executable(par.b parallel.b.cpp)
+target_include_directories(par.b PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(par.b PRIVATE libtaperestapi)
