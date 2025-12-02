@@ -368,13 +368,22 @@ static auto extend_paths_with_localities(PhysicalPaths&& paths,
 {
   TRACE_FUNCTION();
   std::vector<PathLocality> path_localities;
+  /*
   path_localities.reserve(paths.size());
 
   for (auto&& path : paths) {
     auto const locality = ExtendedFileStatus{storage, path}.locality();
     path_localities.emplace_back(std::move(path), locality);
   }
+  */
+  path_localities.resize(paths.size());
 
+  std::transform(std::execution::par, paths.begin(), paths.end(),
+                  path_localities.begin(), [&](PhysicalPath& path) {
+                  auto const locality =
+                  ExtendedFileStatus{storage, path}.locality();
+                  return PathLocality{std::move(path), locality};
+                });
   return path_localities;
 }
 

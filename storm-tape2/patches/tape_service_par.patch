@@ -65,37 +65,19 @@
 -        override_locality(locality, physical_path);
 -        return PathInfo{std::move(logical_path), locality};
 -      });
-+   std::mutex infos_mtx;
++  
+@@
+- path_localities.reserve(paths.size());
+-
+-  for (auto&& path : paths) {
+-    auto const locality = ExtendedFileStatus{storage, path}.locality();
+-    path_localities.emplace_back(std::move(path), locality);
+-  }
++p ath_localities.resize(paths.size());
 +
-+   std::for_each(std::execution::par, paths.begin(), paths.end(),
-+              [&](LogicalPath& logical_path) {
-+                  using namespace std::string_literals;
-+                  StorageAreaResolver resolver{m_config.storage_areas};
-+                  auto const physical_path = resolver(logical_path);
-+
-+                  PathInfo path_info;
-+                  path_info.path = logical_path;
-+
-+                  std::error_code ec;
-+                  auto status = fs::status(physical_path, ec);
-+                  if (ec || !fs::exists(status)) {
-+                      // file non trovato o errore d’accesso
-+                      path_info.info = "File not found or inaccessible"s;
-+                  } else {
-+                      // ottieni la località dal file system esteso
-+                      ExtendedFileStatus fs_info{m_storage, physical_path};
-+
-+                      auto locality = fs_info.locality();
-+
-+                      // cambia la locality lost in unavailable
-+                      override_locality(locality, physical_path);
-+
-+                      path_info.info = locality;
-+                  }
-+
-+                 // inserimento thread-safe nel vettore condiviso
-+                  {
-+                      std::lock_guard<std::mutex> lock(infos_mtx);
-+                      infos.push_back(std::move(path_info));
-+                  }
-+              });
++  std::transform(std::execution::par, paths.begin(), paths.end(),
++                  path_localities.begin(), [&](PhysicalPath& path) {
++                  auto const locality =
++                  ExtendedFileStatus{storage, path}.locality();
++                  return PathLocality{std::move(path), locality};
++                });
