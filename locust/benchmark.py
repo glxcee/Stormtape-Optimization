@@ -26,14 +26,14 @@ from datetime import datetime
 from threading import Thread
 
 # === CONFIGURAZIONE ===
-HOST = "http://localhost:8080"
-LOCUSTFILE = "client.py"
+HOST = "https://storm-tape.cr.cnaf.infn.it:8443"
+LOCUSTFILE = "locustfile.py"
 
-USERS_LIST = [10, 50, 100, 200, 400]
-SPAWN_RATE = 10
+USERS_LIST = [1]
+SPAWN_RATE = 0
 DURATION = "1m"
 
-USERS_LIST1 = [10, 20, 30]
+USERS_LIST1 = [10, 50, 30]
 SPAWN_RATE1 = 2
 DURATION1 = "10s"
 

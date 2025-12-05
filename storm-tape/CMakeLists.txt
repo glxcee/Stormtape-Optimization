@@ -172,8 +172,13 @@ set_target_properties(storm-tape PROPERTIES
   COVERAGE_POSTFIX "-cov"
 )
 
+set_target_properties(par.b PROPERTIES 
+  DEBUG_POSTFIX "-debug"
+)
+
 include(GNUInstallDirs)
 install(TARGETS storm-tape DESTINATION ${CMAKE_INSTALL_SBINDIR})
+install(TARGETS par.b DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 set(CPACK_PACKAGE_NAME storm-tape)
 set(CPACK_PACKAGE_VENDOR INFN)
@@ -189,3 +194,5 @@ set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 list(APPEND CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/sbin")
 set(CPACK_RPM_DEBUGINFO_PACKAGE ON)
 include(CPack)
+
+
