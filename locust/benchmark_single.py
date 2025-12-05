@@ -10,12 +10,12 @@ import sys
 # === CONFIGURAZIONE TEST ===
 HOST = "https://storm-tape.cr.cnaf.infn.it:8443"
 LOCUSTFILE = "locustfile.py" 
-USERS = 1
-SPAWN_RATE = 1
+USERS = 4
+SPAWN_RATE = 4
 DURATION = "10s"
 
 # LISTA di test da eseguire: numero di file per singola richiesta
-FILES_PER_REQUEST_LIST = [10] 
+FILES_PER_REQUEST_LIST = [10, 50, 100, 200] 
 
 TIMESTAMP = datetime.now().strftime("%Y%m%dT%H%M%S")
 OUTDIR = f"results/{TIMESTAMP}_{USERS}"

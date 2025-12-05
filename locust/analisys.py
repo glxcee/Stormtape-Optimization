@@ -11,7 +11,7 @@ if sys.argv.__len__() < 2:
     print("Usage: python analisys.py <output_directory>")
     sys.exit(1)
 
-OUTDIR = f"results/{sys.argv[1]}"
+OUTDIR = f"{sys.argv[1]}"
 
 SUMMARY_MD = os.path.join(OUTDIR, "summary.md")
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
             except Exception as e:
                 print(f"❌ Errore parsing CSV: {e}")
         else:
-            print("⚠️  CSV non trovato.")
+            print(f"⚠️  CSV {stats_file} non trovato.")
 
     print(results_data)
     #generate_report(results_data)
