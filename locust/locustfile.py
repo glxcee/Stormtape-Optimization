@@ -4,8 +4,12 @@ import json
 import time
 import random
 import os
+import sys
 
-token = ""
+token = os.getenv("AT")
+if token == None:
+    print("No token")
+    sys.exit(1)
 
 auth = {"Authorization": f"Bearer {token}"} if token != "" else {}
 
@@ -15,9 +19,6 @@ try:
     print(f"⚙️  STORM_FILES_PER_REQ = {create_amount}")
 except:
     print("⚠️  STORM_FILES_PER_REQ non valido, uso default 10")
-# numero massimo di file da richiedere in una singola operazione di stage
-
-check_amount_max = 5  # numero massimo di file da richiedere in una singola operazione di archiveinfo
 
 class StormTapeUser(HttpUser):
     """
@@ -64,7 +65,6 @@ class StormTapeUser(HttpUser):
                 catch_response=True, 
                 name="stage") as resp:
 
-            print(resp)
             if resp.status_code == 200 or resp.status_code == 201:
                 try:
                     j = resp.json()

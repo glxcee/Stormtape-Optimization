@@ -8,10 +8,10 @@ from datetime import datetime
 import sys
 
 # === CONFIGURAZIONE TEST ===
-HOST = "http://localhost:8080"#"https://storm-tape.cr.cnaf.infn.it:8443"
+HOST = "https://storm-tape.cr.cnaf.infn.it:8443"
 LOCUSTFILE = "locustfile.py" 
-USERS = 1
-SPAWN_RATE = 1
+USERS = 16
+SPAWN_RATE = 16
 DURATION = "10s"
 
 # LISTA di test da eseguire: numero di file per singola richiesta
@@ -31,7 +31,7 @@ def run_benchmark_suite():
     print(f"   Scenari (files/req): {FILES_PER_REQUEST_LIST}")
 
     # Iteriamo sui diversi carichi di file
-    for n_files in FILES_PER_REQUEST_LIST:4
+    for n_files in FILES_PER_REQUEST_LIST:
         print(f"\n--- Inizio Test: {n_files} file per richiesta ---")
         
         prefix = f"{OUTDIR}/test_{n_files}_files"
@@ -61,7 +61,7 @@ def run_benchmark_suite():
         except subprocess.CalledProcessError as e:
             print(f"❌ Errore Locust nel test {n_files}: {e}")
 
-
+    print(f"Results in {OUTDIR}")
 
 
 if __name__ == "__main__":
