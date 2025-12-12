@@ -10,6 +10,9 @@ data = [
         "stage_avg": 373,
         "og_rps": 5.66,
         "og_stage_avg": 367,
+        "og_wal_rps": 4.8,
+        "og_wal_stage_avg": 445,
+        "mt4_stage_avg": 341,
     },
     {
         "users": 2,
@@ -18,6 +21,9 @@ data = [
         "stage_avg": 408,
         "og_rps": 8.77,
         "og_stage_avg": 439,
+        "og_wal_rps": 9.58,
+        "og_wal_stage_avg": 441,
+        "mt4_stage_avg": 376,
     },
     {
         "users": 4,
@@ -26,6 +32,9 @@ data = [
         "stage_avg": 502,
         "og_rps": 12.33,
         "og_stage_avg": 547,
+        "og_wal_rps": 13.15,
+        "og_wal_stage_avg": 548,
+        "mt4_stage_avg": 504,
     },
     {
         "users": 8,
@@ -34,6 +43,9 @@ data = [
         "stage_avg": 862,
         "og_rps": 14.18,
         "og_stage_avg": 961,
+        "og_wal_rps": 13.69,
+        "og_wal_stage_avg": 1014,
+        "mt4_stage_avg": 868,
     },
     {
         "users": 16,
@@ -42,6 +54,9 @@ data = [
         "stage_avg": 1678,
         "og_rps": 11.37,
         "og_stage_avg": 2369,
+        "og_wal_rps": 12.59,
+        "og_wal_stage_avg": 2213,
+        "mt4_stage_avg": 1733,
     }
 ]
 
@@ -52,9 +67,10 @@ if __name__ == "__main__":
 
     plt.figure(figsize=(10, 6))
     #plt.plot(df["files_per_req"], df["og_rps"], marker='o', linestyle='-', color='gray', linewidth=2, label='Seriale')
-    plt.plot(df["users"], df["og_rps"], marker='o', linestyle='-', color='gray', linewidth=2, label='Sequenziale - 1 Core')
-    plt.plot(df["users"], df["mt1_rps"], marker='o', linestyle='-', color='green', linewidth=2, label='Parallelo - 1 Core')
-    plt.plot(df["users"], df["mt4_rps"], marker='o', linestyle='-', color='red', linewidth=2, label='Parallelo - 3 Core')
+    plt.plot(df["users"], df["og_rps"], marker='o', linestyle='-', color='gray', linewidth=2, label='Sequenziale - 1 Server Thread')
+    plt.plot(df["users"], df["og_wal_rps"], marker='o', linestyle='-', color='darkgray', linewidth=2, label='Sequenziale (WAL attiva) - 1 Server Thread')
+    plt.plot(df["users"], df["mt1_rps"], marker='o', linestyle='-', color='green', linewidth=2, label='Parallelo - 1 Server Thread')
+    plt.plot(df["users"], df["mt4_rps"], marker='o', linestyle='-', color='red', linewidth=2, label='Parallelo - 3 Server Thread')
 
 
     plt.title("Fissati 200 Files per richiesta", fontsize=14)
@@ -71,11 +87,13 @@ if __name__ == "__main__":
 
 
 
-    max_y = df["og_stage_avg"].max() * 1.2
+    max_y = df["og_wal_stage_avg"].max() * 1.2
 
     plt.figure(figsize=(10, 6))
-    plt.plot(df["users"], df["og_stage_avg"], marker='o', linestyle='-', color='gray', linewidth=2, label='Sequenziale - 1 Core')
-    plt.plot(df["users"], df["stage_avg"], marker='o', linestyle='-', color='blue', linewidth=2, label='Parallelo - 1 Core')
+    plt.plot(df["users"], df["og_stage_avg"], marker='o', linestyle='-', color='gray', linewidth=2, label='Sequenziale - 1 Server Thread')
+    plt.plot(df["users"], df["og_wal_stage_avg"], marker='o', linestyle='-', color='darkgray', linewidth=2, label='Sequenziale (WAL attiva) - 1 Server Thread')
+    plt.plot(df["users"], df["stage_avg"], marker='o', linestyle='-', color='blue', linewidth=2, label='Parallelo - 1 Server Thread')
+    plt.plot(df["users"], df["mt4_stage_avg"], marker='o', linestyle='-', color='red', linewidth=2, label='Parallelo - 3 Server Thread')
 
     plt.title("Fissati 200 Files per richiesta", fontsize=14)
     plt.xlabel("Utenti", fontsize=12)
